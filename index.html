@@ -1707,7 +1707,7 @@
                         document.write(`
                             <div style="margin-top: 20px; padding: 15px; border: 1px dashed #fbff00; background: rgba(251, 255, 0, 0.1); text-align: center;">
                                 <p style="font-size: 0.7rem; color: #fbff00; margin-bottom: 15px; font-family: sans-serif; font-weight: bold; letter-spacing: 1px;">MODO DESARROLLO DETECTADO</p>
-                                <button onclick="window.location.href='index.html?steamid=76561198000000000'" 
+                                <button onclick="window.location.href='index.html?steamid=76561198000000000&name=PRO_DEVELOPER&avatar=https://avatars.akamai.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cd306_full.jpg'" 
                                     style="background: #fbff00; border: none; color: #000; padding: 12px; cursor: pointer; font-size: 0.9rem; font-weight: 800; width: 100%; box-shadow: 0 0 20px rgba(251, 255, 0, 0.3); text-transform: uppercase;">
                                     Entrar ahora (Bypass Localhost)
                                 </button>
@@ -1814,44 +1814,45 @@
         function checkSteamSession() {
             const urlParams = new URLSearchParams(window.location.search);
             const steamId = urlParams.get('steamid');
+            const name = urlParams.get('name');
+            const avatar = urlParams.get('avatar');
 
             if (steamId) {
-                // Successfully returned from Steam
-                updateUIAsLoggedIn(steamId);
-
-                // Clean up URL without reloading
+                updateUIAsLoggedIn(steamId, name, avatar);
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
         }
 
-        function updateUIAsLoggedIn(steamId) {
-            // Actualizar zona de usuario en el header
+        function updateUIAsLoggedIn(steamId, name, avatar) {
             const userZone = document.querySelector('.user-zone');
+            const displayName = name || "PRO_PLAYER_" + steamId.substring(steamId.length - 4);
+            const displayAvatar = avatar || "https://avatars.akamai.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cd306_full.jpg";
+
             if (userZone) {
                 userZone.innerHTML = `
                     <div class="user-info">
-                        <span class="status-dot" style="background: var(--secondary); box-shadow: 0 0 10px var(--secondary-glow);"></span>
-                        <span style="font-size: 0.9rem; font-weight: 700; letter-spacing: 1px; color: #fff;">ID: ${steamId.substring(0, 10)}...</span>
+                        <img src="${displayAvatar}" style="width: 35px; height: 35px; border: 1px solid var(--secondary); margin-right: 12px; box-shadow: 0 0 10px var(--secondary-glow);">
+                        <div style="display: flex; flex-direction: column; justify-content: center;">
+                            <span style="font-size: 0.9rem; font-weight: 700; color: #fff; line-height: 1;">${displayName}</span>
+                            <span style="font-size: 0.6rem; color: var(--secondary); letter-spacing: 1px;">ONLINE • NIVEL 24</span>
+                        </div>
                     </div>
                 `;
             }
 
-            // Actualizar panel de estadísticas
             const statBox = document.querySelector('.quick-stats .cyber-panel div[style*="text-align: center"]');
             if (statBox) {
                 statBox.innerHTML = `
-                    <div style="font-size: 2.5rem; color: var(--primary); margin-bottom: 5px; font-weight: 800;">VERIFICADO</div>
-                    <p style="color: var(--secondary); font-weight: 700; font-size: 0.8rem; letter-spacing: 2px;">CUENTA VINCULADA</p>
-                    <p style="font-size: 0.85rem; margin-top: 15px; color: var(--text-med);">Tus estadísticas ahora se sincronizan con la API de Steam.</p>
+                    <div style="padding: 10px;">
+                        <img src="${displayAvatar}" style="width: 70px; height: 70px; border: 2px solid var(--primary); margin-bottom: 15px; box-shadow: 0 0 15px var(--primary-glow);">
+                        <h4 style="color: var(--text-high); margin-bottom: 5px;">${displayName}</h4>
+                        <p style="color: var(--secondary); font-size: 0.75rem; font-weight: 700;">DIVISIÓN: ELITE GUARD</p>
+                    </div>
                 `;
             }
 
-            // Cambiar botones de inscripción
-            document.querySelectorAll('button[onclick*="toggleModal(true)"]').forEach(btn => {
-                btn.innerText = 'YA INSCRITO';
-                btn.style.borderColor = 'var(--secondary)';
-                btn.style.color = 'var(--secondary)';
-                btn.onclick = () => alert('Ya estás registrado en este torneo.');
+            document.querySelectorAll('button[onclick*="handleRegistration(this)"]').forEach(btn => {
+                btn.classList.add('can-register');
             });
         }
 

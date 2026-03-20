@@ -40,9 +40,34 @@ if (isset($_GET['openid_mode']) && $_GET['openid_mode'] == 'id_res') {
         $openid_claimed_id = $_GET['openid_claimed_id'];
         preg_match('/^https:\/\/steamcommunity\.com\/openid\/id\/(7[0-9]{15,25}+)$/', $openid_claimed_id, $matches);
         $steamid64 = $matches[1];
-        header("Location: index.html?steamid=" . $steamid64);
+
+        // MODO SIN API KEY: Usamos el feed XML público de Steam
+        $profile_url = "https://steamcommunity.com/profiles/$steamid64/?xml=1";
+        
+        $ch = curl_init($profile_url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        $xml_res = curl_exec($ch);
+        curl_close($ch);
+
+        $name = "PRO_PLAYER";
+        $avatar = "https://avatars.akamai.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cd306_full.jpg";
+
+        if ($xml_res) {
+            try {
+                $xml = new SimpleXMLElement($xml_res);
+                if (isset($xml->steamID)) $name = (string)$xml->steamID;
+                if (isset($xml->avatarFull)) $avatar = (string)$xml->avatarFull;
+            } catch (Exception $e) {
+                // Fallback a los valores por defecto si falla el XML
+            }
+        }
+
+        header("Location: index.html?steamid=$steamid64&name=".urlencode($name)."&avatar=".urlencode($avatar));
         exit;
-    } else {
+    }
+ else {
         die("Error de validación. Steam dice que los datos no son válidos o la conexión ha fallado.");
     }
 } 
