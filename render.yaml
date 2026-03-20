@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: impact-point-hub
+    runtime: php
+    plan: free
+    buildCommand: composer install
+    startCommand: apache2-foreground

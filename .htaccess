@@ -1,0 +1,7 @@
+# Force HTTPS
+RewriteEngine On
+RewriteCond %{HTTP:X-Forwarded-Proto} !https
+RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
+
+# Directory Index
+DirectoryIndex index.html login.php

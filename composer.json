@@ -1,0 +1,8 @@
+{
+    "name": "impact-point/hub",
+    "description": "Impact Point Esports Hub",
+    "type": "project",
+    "require": {
+        "php": ">=7.4"
+    }
+}
