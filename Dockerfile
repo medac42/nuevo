@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y \
     libcurl4-openssl-dev \
     pkg-config \
     libssl-dev \
-    && docker-php-ext-install curl
+    && docker-php-ext-install curl pdo_mysql
 
 # Copy project files to the web server root
 COPY . /var/www/html/

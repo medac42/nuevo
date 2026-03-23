@@ -1,0 +1,10 @@
+{
+    "players": {},
+    "tournaments": {
+        "1": {
+            "name": "WEEKLY BRAWL - SEMANA 1",
+            "max_players": 32,
+            "registrations": {}
+        }
+    }
+}

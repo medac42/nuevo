@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 
     <style>
         /* ========================================================= */
@@ -1722,6 +1723,24 @@
                 <div class="steam-footer-links">
                     <span class="steam-link" style="font-family: sans-serif;">Ayuda, no puedo iniciar sesión</span>
                 </div>
+
+                <!-- Google Login Integration -->
+                <div style="margin-top: 30px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 25px;">
+                    <p style="color: #afafaf; font-size: 0.8rem; margin-bottom: 15px; font-family: sans-serif; text-align: center;">O CONTINÚA CON GOOGLE</p>
+                    <div id="g_id_onload"
+                        data-client_id="YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
+                        data-callback="handleGoogleResponse"
+                        data-auto_prompt="false">
+                    </div>
+                    <div class="g_id_signin"
+                        data-type="standard"
+                        data-size="large"
+                        data-theme="outline"
+                        data-text="sign_in_with"
+                        data-shape="rectangular"
+                        data-logo_alignment="left">
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -1753,13 +1772,15 @@
             }
         }
 
-        // Registro en Torneo (Simulado)
-        function handleRegistration(btn) {
+        // Global user state
+        let currentUser = null;
+
+        // Registro en Torneo (Real)
+        async function handleRegistration(btn) {
             if (btn.textContent === "INSCRITO") return;
             
             // Si no está logueado, mostrar modal de login
-            const userZone = document.querySelector('.user-info span[style*="font-weight: 700"]');
-            if (userZone && userZone.textContent === "GUEST_082") {
+            if (!currentUser) {
                 showToast("POR FAVOR, CONECTA TU CUENTA DE STEAM PRIMERO.");
                 toggleModal(true);
                 return;
@@ -1771,20 +1792,45 @@
 
             showToast("CONECTANDO CON SERVIDORES DE IMPACT POINT...");
 
-            setTimeout(() => {
-                btn.textContent = "VALIDANDO PERFIL...";
-                showToast("CRITERIOS DE ELEGIBILIDAD CUMPLIDOS.");
-            }, 1200);
+            try {
+                const response = await fetch('register.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        steamid: currentUser.steamid,
+                        name: currentUser.name,
+                        avatar: currentUser.avatar,
+                        tournament_id: 1 // Usamos el torneo por defecto
+                    })
+                });
 
-            setTimeout(() => {
-                btn.textContent = "INSCRITO";
-                btn.classList.add('neon-pulse');
-                btn.style.background = "var(--secondary)";
-                btn.style.color = "#000";
-                btn.style.opacity = "1";
+                const result = await response.json();
+
+                if (result.success) {
+                    setTimeout(() => {
+                        btn.textContent = "INSCRITO";
+                        btn.classList.add('neon-pulse');
+                        btn.style.background = "var(--secondary)";
+                        btn.style.color = "#000";
+                        btn.style.opacity = "1";
+                        btn.disabled = false;
+                        showToast("¡INSCRIPCIÓN COMPLETADA! SLOT ASIGNADO: #" + (result.slot + 1));
+                        
+                        // Recargar el bracket para ver el cambio
+                        fetchBracket();
+                    }, 1000);
+                } else {
+                    btn.textContent = "INSCRIBIRSE AHORA";
+                    btn.disabled = false;
+                    btn.style.opacity = "1";
+                    showToast("ERROR: " + result.message);
+                }
+            } catch (error) {
+                btn.textContent = "INSCRIBIRSE AHORA";
                 btn.disabled = false;
-                showToast("¡INSCRIPCIÓN COMPLETADA! CHECK-IN EN 4 HORAS.");
-            }, 2500);
+                btn.style.opacity = "1";
+                showToast("ERROR DE CONEXIÓN.");
+            }
         }
 
         // Gestión del Modal
@@ -1808,6 +1854,29 @@
             }, 800);
         }
 
+        // --- GOOGLE LOGIN HANDLER ---
+        function handleGoogleResponse(response) {
+            // Decode JWT (Google Credential)
+            const base64Url = response.credential.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+
+            const userData = JSON.parse(jsonPayload);
+            
+            // Redirect with profile data
+            const name = userData.name;
+            const avatar = userData.picture;
+            const googleId = userData.sub;
+
+            showToast("AUTENTICACIÓN CON GOOGLE EXITOSA.");
+            
+            setTimeout(() => {
+                window.location.href = `index.html?steamid=G_${googleId.substring(0,10)}&name=${encodeURIComponent(name)}&avatar=${encodeURIComponent(avatar)}`;
+            }, 1000);
+        }
+
         /**
          * Check for Steam Session on Load
          */
@@ -1818,6 +1887,7 @@
             const avatar = urlParams.get('avatar');
 
             if (steamId) {
+                currentUser = { steamid: steamId, name, avatar };
                 updateUIAsLoggedIn(steamId, name, avatar);
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
@@ -1950,10 +2020,53 @@
             }, 18000 + Math.random() * 10000);
         }
 
+        // Función para cargar y mostrar el bracket
+        async function fetchBracket() {
+            const bracketContainer = document.querySelector('#bracket-modal .modal-content > div');
+            if (!bracketContainer) return;
+
+            try {
+                const response = await fetch('get_bracket.php?tournament_id=1');
+                const result = await response.json();
+
+                if (result.success) {
+                    renderBracket(result.players);
+                }
+            } catch (error) {
+                console.error("Error fetching bracket:", error);
+            }
+        }
+
+        function renderBracket(players) {
+            // Buscamos los slots de la interfaz y los llenamos
+            const bracketModal = document.getElementById('bracket-modal');
+            const slots = bracketModal.querySelectorAll('.glass-panel div:first-child span:first-child');
+            
+            // Limpiar slots del mockup primero
+            slots.forEach(slot => {
+                slot.textContent = '---';
+                slot.parentElement.parentElement.style.opacity = '0.3';
+            });
+
+            // Asignar jugadores reales a sus slots
+            // Nota: El mockup actual solo tiene 4 slots visibles, vamos a adaptarlo
+            players.forEach(player => {
+                // Mapear slots de BD a la UI (simplificado para el mockup de 4 jugadores)
+                // En una implementación real, generaríamos el SVG o el DOM dinámicamente
+                if (player.slot < slots.length) {
+                    const slotText = slots[player.slot];
+                    slotText.textContent = player.name;
+                    slotText.parentElement.parentElement.style.opacity = '1';
+                    slotText.parentElement.parentElement.style.borderColor = 'var(--secondary)';
+                }
+            });
+        }
+
         // Ejecutar chat y efectos al cargar
         window.addEventListener('load', () => {
             if (document.getElementById('view-tv')) startSimulatedChat();
             startTrackingFlicker();
+            fetchBracket(); // Cargar bracket real
             setTimeout(() => showToast("BIENVENIDO AL CIRCUITO IMPACT POINT. TRANSMISIÓN ESTABLE."), 3000);
         });
 
